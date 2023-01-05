@@ -10,7 +10,11 @@ export const Loader = () => {
       secondaryColor="#3ea6d6"
       radius="12.5"
       ariaLabel="mutating-dots-loading"
-      wrapperStyle={{}}
+      wrapperStyle={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}
       wrapperClass=""
       visible={true}
     />

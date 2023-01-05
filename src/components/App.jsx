@@ -5,63 +5,136 @@ import { Modal } from './Modal/Modal';
 import { Searchbar } from './Searchbar/Searchbar';
 import { Button } from './Button/Button';
 import { getImages } from 'services/images.service';
+import { STATUS } from 'constants/status.constants';
+import Notify from 'services/notifications.service';
 
 export class App extends Component {
   state = {
-    images: null,
-    isLoading: false,
-    isError: false,
+    images: [],
+    page: 1,
+    search: '',
+    currentImage: null,
+    status: STATUS.idle,
   };
 
-  async componentDidMount() {
-    this.setState({ isLoading: true });
-
-    this.fetchData();
+  componentDidUpdate(_, prevState) {
+    const { page, search } = this.state;
+    if (prevState.page !== page || prevState.search !== search) {
+      if (search !== '') {
+        this.fetchData({ page, search });
+      }
+    }
   }
 
-  handleSubmit = () => {};
+  handleSearch = search => {
+    if (search === '') {
+      Notify.warning('Please enter key word');
+    }
+    this.setState({
+      images: [],
+      search,
+      page: 1,
+    });
+  };
 
-  fetchData = async (page = 1) => {
-    this.setState({ isLoading: true });
+  fetchData = async ({ page = this.state.page, search = '' }) => {
+    this.setState({ status: STATUS.loading });
 
     try {
-      const data = await getImages(page);
-      this.setState({ images: data });
+      const data = await getImages({ page, search });
+      this.handleResolve(data);
     } catch (error) {
-      this.setState({ isError: true });
+      this.setState({ status: STATUS.error });
       console.log(error);
-    } finally {
-      this.setState({ isLoading: false });
+    }
+  };
+
+  handleResolve = ({ hits, total, totalHits }) => {
+    if (!total) {
+      Notify.failure(
+        'Sorry, there are no images matching your search, please try another key word'
+      );
+      this.setState({ status: STATUS.idle });
+      return;
+    }
+
+    if (totalHits < this.state.page * 12) {
+      this.setState(({ images }) => ({
+        images: [...images, ...hits],
+        status: STATUS.idle,
+      }));
+      Notify.failure(
+        "We're sorry, but you've reached the end of search results"
+      );
+      return;
+    }
+
+    this.setState(({ images }) => ({
+      images: [...images, ...hits],
+      status: STATUS.success,
+    }));
+    if (this.state.page === 1) {
+      Notify.success(`That's what we found`);
+    }
+  };
+
+  handleLoadMore = () => {
+    this.setState(({ page }) => ({
+      page: page + 1,
+    }));
+    Notify.success('Here you have more pictures');
+  };
+
+  openModal = image => {
+    this.setState({ currentImage: image });
+  };
+
+  closeModal = ({ currentTarget, target }) => {
+    if (currentTarget === target) {
+      this.setState({ currentImage: null });
     }
   };
 
   render() {
-    const { images, isLoading, isError } = this.state;
+    const { images, status, currentImage } = this.state;
 
     return (
       <div
         style={{
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
+          display: 'grid',
+          gridTemplateColumns: '1fr',
+          gridGap: '16px',
+          paddingBottom: '24px',
           color: '#122236',
           fontFamily: 'Verdana, Geneva, Tahoma, sans-serif',
-          marginTop: '16px',
           fontSize: '24px',
         }}
       >
-        <Searchbar onSubmit={this.handleSubmit} />
+        <Searchbar onSubmit={this.handleSearch} />
 
-        {isError && <h2>Oops... Something went wrong</h2>}
+        {images.length > 0 && (
+          <ImageGallery images={images} onClick={this.openModal} />
+        )}
 
-        <ImageGallery images={images} />
+        {images.length > 0 && status === STATUS.success && (
+          <Button onClick={this.handleLoadMore} />
+        )}
 
-        {images && <Button onClick={this.fetchData} />}
+        {status === STATUS.loading && <Loader />}
 
-        {isLoading && <Loader />}
+        {currentImage && (
+          <Modal image={currentImage} onClose={this.closeModal} />
+        )}
 
-        <Modal />
+        {status === STATUS.error && (
+          <h2
+            style={{
+              textAlign: 'center',
+            }}
+          >
+            Oops... Something went wrong
+          </h2>
+        )}
       </div>
     );
   }

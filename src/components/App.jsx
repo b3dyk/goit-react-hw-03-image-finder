@@ -26,6 +26,8 @@ export class App extends Component {
     }
   }
 
+  componentWillUnmount() {}
+
   handleSearch = search => {
     if (search === '') {
       Notify.warning('Please enter key word');
@@ -89,10 +91,8 @@ export class App extends Component {
     this.setState({ currentImage: image });
   };
 
-  closeModal = ({ currentTarget, target }) => {
-    if (currentTarget === target) {
-      this.setState({ currentImage: null });
-    }
+  closeModal = () => {
+    this.setState({ currentImage: null });
   };
 
   render() {

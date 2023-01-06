@@ -26,8 +26,6 @@ export class App extends Component {
     }
   }
 
-  componentWillUnmount() {}
-
   handleSearch = search => {
     if (search === '') {
       Notify.warning('Please enter key word');
@@ -52,6 +50,15 @@ export class App extends Component {
   };
 
   handleResolve = ({ hits, total, totalHits }) => {
+    const sortedImages = hits.map(
+      ({ id, webformatURL, tags, largeImageURL }) => ({
+        id,
+        webformatURL,
+        tags,
+        largeImageURL,
+      })
+    );
+
     if (!total) {
       Notify.failure(
         'Sorry, there are no images matching your search, please try another key word'
@@ -62,7 +69,7 @@ export class App extends Component {
 
     if (totalHits < this.state.page * 12) {
       this.setState(({ images }) => ({
-        images: [...images, ...hits],
+        images: [...images, ...sortedImages],
         status: STATUS.idle,
       }));
       Notify.failure(
@@ -72,7 +79,7 @@ export class App extends Component {
     }
 
     this.setState(({ images }) => ({
-      images: [...images, ...hits],
+      images: [...images, ...sortedImages],
       status: STATUS.success,
     }));
     if (this.state.page === 1) {
